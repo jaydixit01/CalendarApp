@@ -67,7 +67,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
   "Constraints:\n" +
   "- Required fields: title, startDate, endDate, allDay.\n" +
   "- If data is missing, omit the field unless required.\n" +
-  "- Never return text outside the JSON.";
+  "- Never return text outside the JSON .";
 
 const userPrompt = 
   "Parse the uploaded syllabus into a calendar-ready JSON of assignments.\n\n" +
