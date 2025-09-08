@@ -1,34 +1,56 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React from "react";
+import { Button } from "./components/ui/button"
+import { Input } from "./components/ui/input";
+import { toast, Toaster } from "sonner";
+
 
 function App() {
-  const [count, setCount] = useState(0)
+
+  const [file, setFile] = React.useState<File | null>(null);
+  const [isUploading, setIsUploading] = React.useState(false);
+
+  async function handleUpload(){
+    setIsUploading(true);
+    if(!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    console.log("form Data: ", formData.get("file"));
+
+    try{
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if(!response.ok) throw new Error("Upload failed");
+      const data = await response.json();
+      console.log(data);
+      toast.success("Upload Successful")
+    } catch(error){
+      toast.error("Upload Failed. Try again.")
+    } finally{
+      setIsUploading(false);
+    }
+   
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <div className="flex items-center justify-center h-screen">
+      <Toaster />
+    <div className="flex flex-col items-center space-y-4">
+      <Input
+        type="file"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            setFile(file);
+            console.log("Selected file:", file);
+          }
+        }}
+      />
+      <Button disabled={!!!file || isUploading} onClick={handleUpload}>Upload</Button>
+    </div>
+  </div>
+    
   )
 }
 
