@@ -50,36 +50,36 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
     const systemPrompt =
-  "You are an extraction engine that converts university course syllabi into STRICT JSON.\n\n" +
-  "Follow these rules:\n" +
-  "- Output ONLY valid JSON, no extra text.\n" +
-  "- Use this exact structure:\n\n" +
-  "{\n" +
-  '  "title": "string",\n' +
-  '  "allDay": true/false,\n' +
-  '  "startDate": "YYYY-MM-DD",\n' +
-  '  "endDate": "YYYY-MM-DD",\n' +
-  '  "startTime": "HH:mm" (optional),\n' +
-  '  "endTime": "HH:mm" (optional),\n' +
-  '  "location": "string" (optional),\n' +
-  '  "description": "string" (optional)\n' +
-  "}\n\n" +
-  "Constraints:\n" +
-  "- Required fields: title, startDate, endDate, allDay.\n" +
-  "- If data is missing, omit the field unless required.\n" +
-  "- Never return text outside the JSON .";
+        "You are an extraction engine that converts university course syllabi into STRICT JSON.\n\n" +
+        "Follow these rules:\n" +
+        "- Output ONLY valid JSON, no extra text.\n" +
+        "- Use this exact structure:\n\n" +
+        "{\n" +
+        '  "title": "string",\n' +
+        '  "allDay": true/false,\n' +
+        '  "startDate": "YYYY-MM-DD",\n' +
+        '  "endDate": "YYYY-MM-DD",\n' +
+        '  "startTime": "HH:mm" (optional),\n' +
+        '  "endTime": "HH:mm" (optional),\n' +
+        '  "location": "string" (optional),\n' +
+        '  "description": "string" (optional)\n' +
+        "}\n\n" +
+        "Constraints:\n" +
+        "- Required fields: title, startDate, endDate, allDay.\n" +
+        "- If data is missing, omit the field unless required.\n" +
+        "- Never return text outside the JSON .";
 
-const userPrompt = 
-  "Parse the uploaded syllabus into a calendar-ready JSON of assignments.\n\n" +
-  "Goals:\n" +
-  "- Extract all assignments/quizzes/exams/projects/readings that have dates.\n" +
-  "- Normalize dates to YYYY-MM-DD and times to HH:mm (24h) only when explicitly present.\n" +
-  "- Prefer exact dates/times printed in the syllabus.\n" +
-  "- Return ONLY the JSON (no prose) and ensure it matches the schema we provided on the server.\n\n" +
-  "Notes for this syllabus:\n" +
-  "- If the syllabus references an LMS (Canvas/Google Classroom) link for a submission, include it in the item’s link field if present.\n" +
-  "- If a recurring pattern exists (e.g., “weekly reading due every Monday”), expand the instances only if the document provides concrete date mapping for the term; otherwise, include one representative item with a note.";
-        
+      const userPrompt = 
+        "Parse the uploaded syllabus into a calendar-ready JSON of assignments.\n\n" +
+        "Goals:\n" +
+        "- Extract all assignments/quizzes/exams/projects/readings that have dates.\n" +
+        "- Normalize dates to YYYY-MM-DD and times to HH:mm (24h) only when explicitly present.\n" +
+        "- Prefer exact dates/times printed in the syllabus.\n" +
+        "- Return ONLY the JSON (no prose) and ensure it matches the schema we provided on the server.\n\n" +
+        "Notes for this syllabus:\n" +
+        "- If the syllabus references an LMS (Canvas/Google Classroom) link for a submission, include it in the item’s link field if present.\n" +
+        "- If a recurring pattern exists (e.g., “weekly reading due every Monday”), expand the instances only if the document provides concrete date mapping for the term; otherwise, include one representative item with a note.";
+              
     const uploaded = await openai.files.create({
         // Convert Buffer to a File the SDK accepts
         file: await toFile(req.file.buffer, req.file.originalname, { type: req.file.mimetype }),
@@ -101,17 +101,18 @@ const userPrompt =
                 ],
             },
         ],
+        
     });
 
     console.log("response: ", response);
     // Extract the response content
-    const content = response.output[0]?.content;
+    const content = response.output_text; // Adjusted to access the 'text' property instead of 'content'
     
     // Try to parse the JSON response
     let eventData;
-    if (content && content.type === 'text') {
+    if (content) {
         try {
-            eventData = JSON.parse(content.text);
+            eventData = JSON.parse(content);
         } catch (parseError) {
             console.error("Failed to parse JSON response:", parseError);
             return res.status(500).json({ error: "Failed to parse calendar data from file" });
@@ -123,7 +124,8 @@ const userPrompt =
     console.log("Extracted Event Data:", eventData);
 
     // Clean up the uploaded file
-    await openai.files.del(uploaded.id);
+    await openai.files.delete(uploaded.id);
+    res.status(201).json({events: eventData});
 
   } catch(error){
     console.error("Error processing file: ", error);

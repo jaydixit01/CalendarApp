@@ -23,10 +23,11 @@ function App() {
       });
       if(!response.ok) throw new Error("Upload failed");
       const data = await response.json();
-      console.log(data);
+      console.log(data.events);
+
       toast.success("Upload Successful")
     } catch(error){
-      toast.error("Upload Failed. Try again.")
+        toast.error("Upload Failed. Try again.")
     } finally{
       setIsUploading(false);
     }
