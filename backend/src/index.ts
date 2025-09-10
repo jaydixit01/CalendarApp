@@ -29,6 +29,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 
   try{
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    const guessedTZ = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York";
 
     const systemPrompt =
         "You are an extraction engine that converts university course syllabi into STRICT JSON.\n\n" +
@@ -42,11 +43,12 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
         '  "endDate": "YYYY-MM-DD",\n' +
         '  "startTime": "HH:mm" (24 hour, optional),\n' +
         '  "endTime": "HH:mm" (24 hour, optional),\n' +
+        `  "timezone": ${guessedTZ},\n` +
         '  "location": "string",\n' +
         '  "description": "string"\n' +
         "}\n\n" +
         "Constraints:\n" +
-        "- Required fields: title, startDate, endDate, allDay, location, description.\n" +
+        "- Required fields: title, startDate, endDate, timezone, allDay, location, description.\n" +
         "- If no time is specified, the event is an all day event\n" +
         "- If data is missing don't hallucinate, leave the field value blank.\n" +
         "- Never return text outside the JSON .";
@@ -108,15 +110,13 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 
     // Clean up the uploaded file
     await openai.files.delete(uploaded.id);
+    
     res.status(201).json({events: eventData});
 
   } catch(error){
     console.error("Error processing file: ", error);
     res.status(400).json({ message: "Error processing file" });
   }
-
-
-  res.status(200).json({ message: "File uploaded successfully" });
 });
 
 app.listen(5001, () => {
