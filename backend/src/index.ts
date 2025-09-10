@@ -26,25 +26,6 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
   console.log("file info:", req.file); // metadata
   console.log("buffer length:", req.file?.buffer.length); // raw file data
 
-  const eventSchema = {
-    name: "Event",
-    schema: {
-      type: "object",
-      properties: {
-        title: { type: "string" },
-        allDay: { type: "boolean" },
-        startDate: { type: "string", description: "YYYY-MM-DD" },
-        endDate: { type: "string", description: "YYYY-MM-DD" },
-        startTime: { type: "string", description: "HH:mm (24h, optional)" },
-        endTime: { type: "string", description: "HH:mm (24h, optional)" },
-        location: { type: "string" },
-        description: { type: "string" },
-      },
-      required: ["title", "startDate", "endDate", "allDay"],
-      additionalProperties: false
-    },
-    strict: true
-  };
 
   try{
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
@@ -59,25 +40,27 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
         '  "allDay": true/false,\n' +
         '  "startDate": "YYYY-MM-DD",\n' +
         '  "endDate": "YYYY-MM-DD",\n' +
-        '  "startTime": "HH:mm" (optional),\n' +
-        '  "endTime": "HH:mm" (optional),\n' +
-        '  "location": "string" (optional),\n' +
-        '  "description": "string" (optional)\n' +
+        '  "startTime": "HH:mm" (24 hour, optional),\n' +
+        '  "endTime": "HH:mm" (24 hour, optional),\n' +
+        '  "location": "string",\n' +
+        '  "description": "string"\n' +
         "}\n\n" +
         "Constraints:\n" +
-        "- Required fields: title, startDate, endDate, allDay.\n" +
-        "- If data is missing, omit the field unless required.\n" +
+        "- Required fields: title, startDate, endDate, allDay, location, description.\n" +
+        "- If no time is specified, the event is an all day event\n" +
+        "- If data is missing don't hallucinate, leave the field value blank.\n" +
         "- Never return text outside the JSON .";
 
       const userPrompt = 
-        "Parse the uploaded syllabus into a calendar-ready JSON of assignments.\n\n" +
+        "Parse the uploaded syllabus into a calendar-ready JSON of assignments.\n" +
+        "Return ONLY a raw JSON array/object, no markdown, no backticks. \n\n"
         "Goals:\n" +
         "- Extract all assignments/quizzes/exams/projects/readings that have dates.\n" +
         "- Normalize dates to YYYY-MM-DD and times to HH:mm (24h) only when explicitly present.\n" +
         "- Prefer exact dates/times printed in the syllabus.\n" +
         "- Return ONLY the JSON (no prose) and ensure it matches the schema we provided on the server.\n\n" +
         "Notes for this syllabus:\n" +
-        "- If the syllabus references an LMS (Canvas/Google Classroom) link for a submission, include it in the item’s link field if present.\n" +
+        "- If the syllabus references an LMS (Canvas/Google Classroom) link for a submission, include it in the item’s description field if present.\n" +
         "- If a recurring pattern exists (e.g., “weekly reading due every Monday”), expand the instances only if the document provides concrete date mapping for the term; otherwise, include one representative item with a note.";
               
     const uploaded = await openai.files.create({
@@ -101,7 +84,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
                 ],
             },
         ],
-        
+
     });
 
     console.log("response: ", response);
