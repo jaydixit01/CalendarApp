@@ -59,6 +59,8 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
         "Goals:\n" +
         "- Extract all assignments/quizzes/exams/projects/readings that have dates.\n" +
         "- Normalize dates to YYYY-MM-DD and times to HH:mm (24h) only when explicitly present.\n" +
+        "- If no time is specified, the event IS an all day event\n" +
+        "- If a time is specified, the event is NOT an all day event\n" +
         "- Prefer exact dates/times printed in the syllabus.\n" +
         "- Return ONLY the JSON (no prose) and ensure it matches the schema we provided on the server.\n\n" +
         "Notes for this syllabus:\n" +
