@@ -4,11 +4,75 @@ import CalendarMonth from "@/components/CalendarMonth";
 import TaskList from "@/components/TaskList";
 import ViewToggle from "@/components/ViewToggle";
 import { useTasks } from "@/store/useTasks";
+import { toast } from "sonner";
+
+declare global {
+  interface Window {
+    google: typeof google;
+  }
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const google: any;
+}
+
 
 export default function AppShell() {
   const [view, setView] = useState<"month" | "list">("month");
   const clearAll = useTasks((s) => s.clearAll);
   const eventsCount = useTasks((s) => s.events.length);
+
+  async function handleGoogleImport() {
+
+    try{
+      const codeClient = google.accounts.oauth2.initCodeClient({
+        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+        scope: process.env.NEXT_PUBLIC_GOOGLE_SCOPES,
+        access_type: "offline",
+        callback: async (response: any) => {
+          const { code } = response;
+ 
+ 
+          if (!code) {
+            throw new Error("Failed to get authorization code");
+          }
+ 
+ 
+          const res = await fetch("/api/integration", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${userIDToken}`,
+              "X-Google-Code": code,
+            },
+            body: JSON.stringify({
+              getCalendars: true,
+              name: "Google Calendar",
+              selectedCalendars: [],
+            }),
+          });
+ 
+ 
+          if (!res.ok) {
+            throw new Error("Failed to fetch calendars");
+          }
+ 
+ 
+          const { calendars } = await res.json();
+          setCalendars(calendars);
+          onSuccess(calendars);
+        },
+      });
+ 
+ 
+      codeClient.requestCode();
+
+    } catch(error){
+      console.error("Google Import Error:", error);
+      toast.error("An error occurred during Google Import. Please try again.");
+      return;
+    }
+    
+
+  }
 
   return (
     <div className="mx-auto max-w-5xl p-4 sm:p-6">
@@ -32,6 +96,7 @@ export default function AppShell() {
             type="button"
             className="rounded-lg bg-black px-3 py-2 text-sm text-white shadow-sm"
             disabled={eventsCount === 0}
+            onClick={handleGoogleImport}
           >
             Export to Google
           </button>

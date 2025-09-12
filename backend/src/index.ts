@@ -73,8 +73,6 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
         purpose: "assistants" // generic file purpose accepted by Responses API
     });
 
-    console.log("uploaded ")
-
     // Use the Responses API correctly
     const response = await openai.responses.create({
         model: "gpt-4o-mini",
