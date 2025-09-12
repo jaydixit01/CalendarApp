@@ -7,16 +7,26 @@ dotenv.config({ path: ".env.local" })
 
 const app = express();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-//test
 
 app.use(cors({
-    origin: "http://localhost:5173", // your React dev server
-    credentials: true,               // needed if you plan to use cookies/sessions
+    origin: "http://localhost:5173", 
+    credentials: true,               
   }));
 
-app.get('/api', (req, res) => {
-    console.log("hello world;lkja;ldsj")
-    res.send("hello from backend")
+app.post('/api/export', (req, res) => {
+    const rawAuth = req.headers.authorization;
+    const auth = rawAuth?.split(" ")[1]; 
+
+    if(!auth) return res.status(401).json({message: "No authorization code provided."});
+
+    try{
+
+    } catch(error){
+        console.error("Google Export Error:", error);
+        return res.status(400).json({message: "Error exporting events to Google Calendar."});
+    }
+
+    res.status(201).json({message: "Successfully exported events to Google Calendar."});
 })
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -89,7 +99,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 
     });
 
-    console.log("response: ", response);
+    //console.log("response: ", response);
     // Extract the response content
     const content = response.output_text; // Adjusted to access the 'text' property instead of 'content'
     
@@ -106,7 +116,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
         return res.status(500).json({ error: "Unexpected response format" });
     }
 
-    console.log("Extracted Event Data:", eventData);
+    //console.log("Extracted Event Data:", eventData);
 
     // Clean up the uploaded file
     await openai.files.delete(uploaded.id);

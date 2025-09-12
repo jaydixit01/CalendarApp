@@ -5,6 +5,8 @@ import TaskList from "@/components/TaskList";
 import ViewToggle from "@/components/ViewToggle";
 import { useTasks } from "@/store/useTasks";
 import { toast } from "sonner";
+import { Button } from "./ui/button";
+import React from "react";
 
 declare global {
   interface Window {
@@ -15,17 +17,33 @@ declare global {
 }
 
 
+
+
 export default function AppShell() {
   const [view, setView] = useState<"month" | "list">("month");
+  const [gisReady, setGisReady] = useState(false);
   const clearAll = useTasks((s) => s.clearAll);
   const eventsCount = useTasks((s) => s.events.length);
 
-  async function handleGoogleImport() {
+  const clientID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const scopes = import.meta.env.VITE_GOOGLE_SCOPES
 
+  React.useEffect(() => {
+    // If script already present (hot reload, nav), mark ready
+    if (typeof window !== "undefined" && window.google?.accounts?.oauth2) {
+      setGisReady(true);
+    }
+  }, []);
+
+  async function handleGoogleImport() {
+    console.log("before")
+    if(!gisReady) return;
+    console.log("after")
+    
     try{
       const codeClient = google.accounts.oauth2.initCodeClient({
-        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-        scope: process.env.NEXT_PUBLIC_GOOGLE_SCOPES,
+        client_id: clientID,
+        scope: scopes,
         access_type: "offline",
         callback: async (response: any) => {
           const { code } = response;
@@ -36,12 +54,12 @@ export default function AppShell() {
           }
  
  
-          const res = await fetch("/api/integration", {
+          const res = await fetch("/api/export", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${userIDToken}`,
-              "X-Google-Code": code,
+              Authorization: `Bearer ${code}`,
+              //"X-Google-Code": code,
             },
             body: JSON.stringify({
               getCalendars: true,
@@ -52,13 +70,13 @@ export default function AppShell() {
  
  
           if (!res.ok) {
-            throw new Error("Failed to fetch calendars");
+            throw new Error("Failed to export events.");
           }
  
  
-          const { calendars } = await res.json();
-          setCalendars(calendars);
-          onSuccess(calendars);
+          // const { calendars } = await res.json();
+          // setCalendars(calendars);
+          // onSuccess(calendars);
         },
       });
  
@@ -67,7 +85,7 @@ export default function AppShell() {
 
     } catch(error){
       console.error("Google Import Error:", error);
-      toast.error("An error occurred during Google Import. Please try again.");
+      toast.error("An error occurred during Google Export.");
       return;
     }
     
@@ -76,9 +94,15 @@ export default function AppShell() {
 
   return (
     <div className="mx-auto max-w-5xl p-4 sm:p-6">
+      
+      {/* <script
+        src="https://apis.google.com/js/api.js"
+        async defer
+      /> */}
+
       <header className="mb-6 flex items-center justify-between">
         <div>
-          <div className="text-xl font-semibold">Law Bandit</div>
+          <div className="text-xl font-semibold">Law Bandit Internship Application</div>
           <div className="text-sm text-gray-500">Turn syllabi into actionable calendars</div>
         </div>
         <button className="rounded-lg border px-3 py-1 text-sm" onClick={clearAll}>
@@ -92,14 +116,13 @@ export default function AppShell() {
         <ViewToggle value={view} onChange={setView} />
         <div className="flex items-center gap-2">
           <div className="text-xs text-gray-500">{eventsCount} event(s)</div>
-          <button
-            type="button"
+          <Button
             className="rounded-lg bg-black px-3 py-2 text-sm text-white shadow-sm"
             disabled={eventsCount === 0}
             onClick={handleGoogleImport}
           >
             Export to Google
-          </button>
+          </Button>
         </div>
       </div>
       {view === "month" ? <CalendarMonth /> : <TaskList />}
