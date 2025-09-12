@@ -3,6 +3,7 @@ import cors from 'cors';
 import multer from "multer";
 import OpenAI, { toFile } from "openai";
 import dotenv from "dotenv";
+import { google } from "googleapis";
 dotenv.config({ path: ".env.local" })
 
 const app = express();
@@ -13,14 +14,90 @@ app.use(cors({
     credentials: true,               
   }));
 
-app.post('/api/export', (req, res) => {
+app.use(express.json());
+
+app.post('/api/export', async (req, res) => {
     const rawAuth = req.headers.authorization;
+    const {events} = req.body;
+
+    if(events.length === 0) return res.status(200).json({message: "No events to export."})
+    
+    //get temp auth code from header
     const auth = rawAuth?.split(" ")[1]; 
 
     if(!auth) return res.status(401).json({message: "No authorization code provided."});
 
     try{
-        
+        if (auth && typeof auth === "string") {
+            //exchange temp code for a temp access token to write to the user's calendar
+            const response = await fetch(
+              "https://oauth2.googleapis.com/token",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: new URLSearchParams({
+                  code: auth,
+                  client_id: process.env.GOOGLE_CLIENT_ID!,
+                  client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+                  redirect_uri: process.env.REDIRECT_URI!,
+                  grant_type: "authorization_code",
+                }),
+              }
+            );
+            const {access_token} = await response.json();
+
+            if(!access_token) throw new Error("Failed to get access token");
+
+              const oauth2Client = new google.auth.OAuth2();
+                  oauth2Client.setCredentials({ access_token: access_token });
+
+              const calendar = google.calendar({
+                version: "v3",
+                auth: oauth2Client,
+              });
+
+              const newCalendar = {
+                summary: "Law Bandit Syllabus Calendar", 
+                description: "Imported from Law Bandit"
+              }
+
+              //insert the new calendar into the user's google calendar
+              // const createdCalendar = await calendar.calendars.insert({
+              //   requestBody: newCalendar
+              // });
+
+              console.log("acces token: ", access_token)
+
+              const createResp = await fetch("https://www.googleapis.com/calendar/v3/calendars", {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${access_token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  summary: "Law Bandit Syllabus Calendar", 
+                  description: "Imported from Law Bandit"
+                }),
+              });
+
+              //const data = await createResp.json();
+              const text = await createResp.text(); // <-- read the server’s reason
+              console.error("Create calendar failed:", createResp.status, text);
+              console.log("response: ", createResp)
+              //const calendarId = data.id;
+              const calendarId = null;
+
+              if(!calendarId) throw new Error("Failed to create calendar");
+
+              //insert each event from the evnets array into the google calendar
+
+              
+
+
+            
+        }
 
     } catch(error){
         console.error("Google Export Error:", error);

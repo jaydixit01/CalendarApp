@@ -44,7 +44,6 @@ export default function AppShell() {
       const codeClient = google.accounts.oauth2.initCodeClient({
         client_id: clientID,
         scope: scopes,
-        access_type: "offline",
         callback: async (response: any) => {
           const { code } = response;
  
@@ -52,20 +51,20 @@ export default function AppShell() {
           if (!code) {
             throw new Error("Failed to get authorization code");
           }
- 
+
+          console.log("events: ", useTasks.getState().events);
+          const events = useTasks.getState().events;
  
           const res = await fetch("/api/export", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${code}`,
-              //"X-Google-Code": code,
             },
             body: JSON.stringify({
-              getCalendars: true,
-              name: "Google Calendar",
-              selectedCalendars: [],
+              events: events,
             }),
+            
           });
  
  
