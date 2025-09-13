@@ -3,9 +3,12 @@ import cors from 'cors';
 import multer from "multer";
 import OpenAI, { toFile } from "openai";
 import dotenv from "dotenv";
-import { google } from "googleapis";
 import dayjs from 'dayjs';
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 dotenv.config({ path: ".env.local" })
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const app = express();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -51,14 +54,7 @@ app.post('/api/export', async (req, res) => {
 
             if(!access_token) throw new Error("Failed to get access token");
 
-
-              //insert the new calendar into the user's google calendar
-              // const createdCalendar = await calendar.calendars.insert({
-              //   requestBody: newCalendar
-              // });
-
-              console.log("acces token: ", access_token)
-
+            //create the Law Bandit calendar in the user's google calendar
               const createResp = await fetch("https://www.googleapis.com/calendar/v3/calendars", {
                 method: "POST",
                 headers: {
@@ -72,49 +68,48 @@ app.post('/api/export', async (req, res) => {
               });
 
               const data = await createResp.json();
-              //const text = await createResp.text(); // <-- read the server’s reason
-              //console.error("Create calendar failed:", createResp.status, text);
-              console.log("response: ", createResp)
               const calendarID = data.id;
-              //const calendarId = null;
 
               if(!calendarID) throw new Error("Failed to create calendar");
-              console.log("calendar id: ", calendarID)
-
-              //insert each event from the evnets array into the google calendar
               
               let start: { date?: string; dateTime?: string; timeZone?: string };
               let end: { date?: string; dateTime?: string; timeZone?: string };
 
+              //re-format events to fit google calendar api
               for(const event of events){
                 if (event.allDay) {
                   start = {
                     date: dayjs(event.startDate).format("YYYY-MM-DD"),
                   };
     
-                  // Google requires end.date to be **exclusive**, so we add 1 day
                   end = {
-                    date: dayjs(event.endDate).format("YYYY-MM-DD"),
+                    date: dayjs(event.endDate).add(1, "day").format("YYYY-MM-DD"),
                   };
+
                 } else {
-                  // Step 1: Parse the offset-based string as a UTC time
-                    const utcTime = dayjs(startInfo).utc();
-                    const utcTimeEnd = dayjs(endInfo).utc();
-    
-                    // Step 2: Convert to the target IANA timezone
-                    const localInTargetTz = utcTime.tz(event.timezone);
-                    const localInTargetTzEnd = utcTimeEnd.tz(event.timezone);
-                  start = {
-                    //dateTime: dayjs(startInfo).toISOString(), // must be RFC3339
-                    dateTime: localInTargetTz.format(),
-                    timeZone: event.timezone,
-                  };
-                  end = {
-                    //dateTime: dayjs(endInfo).toISOString(),
-                    //dateTime: endInfo,
-                    dateTime: localInTargetTzEnd.format(),
-                    timeZone: event.timezone,
-                  };
+                    const startDateTimeStr = `${dayjs(event.startDate).format("YYYY-MM-DD")} ${event.startTime}`; // e.g. "09/13/2025 14:00"
+                    // const endDateTimeStr   = `${event.endDate} ${event.endTime}`;
+                    const endDateTimeStr   = `${dayjs(event.endDate).format("YYYY-MM-DD")} ${event.endTime}`; 
+
+                    console.log("start datetime str: ", startDateTimeStr);
+                    console.log("end datetime str: ", endDateTimeStr);
+
+                    // 2. Parse in local time, then convert to the target timezone
+                    const startInTz = dayjs.tz(startDateTimeStr, "YYYY-MM-DD HH:mm", event.timezone);
+                    const endInTz   = dayjs.tz(endDateTimeStr, "YYYY-MM-DD HH:mm", event.timezone);
+
+                    console.log("start in tz: ", startInTz);
+                    console.log("end in tz: ", endInTz);
+
+                    // 3. Format to RFC3339
+                    start = {
+                      dateTime: startInTz.format(),   // e.g. "2025-09-13T14:00:00-05:00"
+                      timeZone: event.timezone,       // e.g. "America/Chicago"
+                    };
+                    end = {
+                      dateTime: endInTz.format(),
+                      timeZone: event.timezone,
+                    };
                 }
         
                 const formattedGoogleEvent = {
@@ -124,23 +119,60 @@ app.post('/api/export', async (req, res) => {
                   start: start,
                   end: end,
                 }
-    
-                console.log("add formatted event: ", formattedGoogleEvent)
-    
-                const googleResponse = await fetch(
-                  `https://www.googleapis.com/calendar/v3/calendars/${externalID}/events`,
+
+                let successCount = 0;
+                const results = [];
+
+                const response = await fetch(
+                  `https://www.googleapis.com/calendar/v3/calendars/${calendarID}/events`,
                   {
                     method: "POST",
                     headers: {
-                      Authorization: `Bearer ${token}`,
+                      Authorization: `Bearer ${access_token}`,
                       "Content-Type": "application/json",
                     },
-                    body: JSON.stringify(formattedGoogleEvent),
+                    body: JSON.stringify(formattedGoogleEvent), // ✅ Send individual event
                   }
                 );
                 
-                const googleData = await googleResponse.json();
+                const result = await response.json();
+                
+                if (!response.ok) {
+                  console.error(`Failed to add event: ${event.summary}`, result);
+                } else {
+                  successCount++;
+                  results.push(result);
+                }
+                
+                // delay to avoid rate limits
+                await new Promise(resolve => setTimeout(resolve, 100));
               }
+
+
+              // const batchResponse = await fetch(
+              //   `https://www.googleapis.com/calendar/v3/calendars/${calendarID}/events`,
+              //   {
+              //     method: "POST",
+              //     headers: {
+              //       Authorization: `Bearer ${access_token}`,
+              //       "Content-Type": "application/json",
+              //     },
+              //     body: JSON.stringify({
+              //       events: formattedEvents
+              //     }),
+              //   }
+              // );
+              
+              // const batchResult = await batchResponse.json();
+
+              // console.log("batch result: ", batchResult);
+
+              // if(!batchResponse.ok) {
+              //   console.error("Batch insert error:", batchResult.error);
+              //   throw new Error("Failed to batch insert events");
+              // }
+
+              //console.log(formattedEvents)
             
 
            
