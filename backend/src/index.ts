@@ -4,6 +4,7 @@ import multer from "multer";
 import OpenAI, { toFile } from "openai";
 import dotenv from "dotenv";
 import { google } from "googleapis";
+import dayjs from 'dayjs';
 dotenv.config({ path: ".env.local" })
 
 const app = express();
@@ -50,18 +51,6 @@ app.post('/api/export', async (req, res) => {
 
             if(!access_token) throw new Error("Failed to get access token");
 
-              const oauth2Client = new google.auth.OAuth2();
-                  oauth2Client.setCredentials({ access_token: access_token });
-
-              const calendar = google.calendar({
-                version: "v3",
-                auth: oauth2Client,
-              });
-
-              const newCalendar = {
-                summary: "Law Bandit Syllabus Calendar", 
-                description: "Imported from Law Bandit"
-              }
 
               //insert the new calendar into the user's google calendar
               // const createdCalendar = await calendar.calendars.insert({
@@ -82,16 +71,79 @@ app.post('/api/export', async (req, res) => {
                 }),
               });
 
-              //const data = await createResp.json();
-              const text = await createResp.text(); // <-- read the server’s reason
-              console.error("Create calendar failed:", createResp.status, text);
+              const data = await createResp.json();
+              //const text = await createResp.text(); // <-- read the server’s reason
+              //console.error("Create calendar failed:", createResp.status, text);
               console.log("response: ", createResp)
-              //const calendarId = data.id;
-              const calendarId = null;
+              const calendarID = data.id;
+              //const calendarId = null;
 
-              if(!calendarId) throw new Error("Failed to create calendar");
+              if(!calendarID) throw new Error("Failed to create calendar");
+              console.log("calendar id: ", calendarID)
 
               //insert each event from the evnets array into the google calendar
+              
+              let start: { date?: string; dateTime?: string; timeZone?: string };
+              let end: { date?: string; dateTime?: string; timeZone?: string };
+
+              for(const event of events){
+                if (event.allDay) {
+                  start = {
+                    date: dayjs(event.startDate).format("YYYY-MM-DD"),
+                  };
+    
+                  // Google requires end.date to be **exclusive**, so we add 1 day
+                  end = {
+                    date: dayjs(event.endDate).format("YYYY-MM-DD"),
+                  };
+                } else {
+                  // Step 1: Parse the offset-based string as a UTC time
+                    const utcTime = dayjs(startInfo).utc();
+                    const utcTimeEnd = dayjs(endInfo).utc();
+    
+                    // Step 2: Convert to the target IANA timezone
+                    const localInTargetTz = utcTime.tz(event.timezone);
+                    const localInTargetTzEnd = utcTimeEnd.tz(event.timezone);
+                  start = {
+                    //dateTime: dayjs(startInfo).toISOString(), // must be RFC3339
+                    dateTime: localInTargetTz.format(),
+                    timeZone: event.timezone,
+                  };
+                  end = {
+                    //dateTime: dayjs(endInfo).toISOString(),
+                    //dateTime: endInfo,
+                    dateTime: localInTargetTzEnd.format(),
+                    timeZone: event.timezone,
+                  };
+                }
+        
+                const formattedGoogleEvent = {
+                  summary: event.title,
+                  location: event.location || "",
+                  description: event.description || "",
+                  start: start,
+                  end: end,
+                }
+    
+                console.log("add formatted event: ", formattedGoogleEvent)
+    
+                const googleResponse = await fetch(
+                  `https://www.googleapis.com/calendar/v3/calendars/${externalID}/events`,
+                  {
+                    method: "POST",
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(formattedGoogleEvent),
+                  }
+                );
+                
+                const googleData = await googleResponse.json();
+              }
+            
+
+           
 
               
 
