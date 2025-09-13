@@ -87,24 +87,15 @@ app.post('/api/export', async (req, res) => {
                   };
 
                 } else {
-                    const startDateTimeStr = `${dayjs(event.startDate).format("YYYY-MM-DD")} ${event.startTime}`; // e.g. "09/13/2025 14:00"
-                    // const endDateTimeStr   = `${event.endDate} ${event.endTime}`;
+                    const startDateTimeStr = `${dayjs(event.startDate).format("YYYY-MM-DD")} ${event.startTime}`;
                     const endDateTimeStr   = `${dayjs(event.endDate).format("YYYY-MM-DD")} ${event.endTime}`; 
 
-                    console.log("start datetime str: ", startDateTimeStr);
-                    console.log("end datetime str: ", endDateTimeStr);
-
-                    // 2. Parse in local time, then convert to the target timezone
                     const startInTz = dayjs.tz(startDateTimeStr, "YYYY-MM-DD HH:mm", event.timezone);
                     const endInTz   = dayjs.tz(endDateTimeStr, "YYYY-MM-DD HH:mm", event.timezone);
 
-                    console.log("start in tz: ", startInTz);
-                    console.log("end in tz: ", endInTz);
-
-                    // 3. Format to RFC3339
                     start = {
-                      dateTime: startInTz.format(),   // e.g. "2025-09-13T14:00:00-05:00"
-                      timeZone: event.timezone,       // e.g. "America/Chicago"
+                      dateTime: startInTz.format(),   
+                      timeZone: event.timezone,      
                     };
                     end = {
                       dateTime: endInTz.format(),
@@ -131,7 +122,7 @@ app.post('/api/export', async (req, res) => {
                       Authorization: `Bearer ${access_token}`,
                       "Content-Type": "application/json",
                     },
-                    body: JSON.stringify(formattedGoogleEvent), // ✅ Send individual event
+                    body: JSON.stringify(formattedGoogleEvent), 
                   }
                 );
                 
@@ -147,39 +138,6 @@ app.post('/api/export', async (req, res) => {
                 // delay to avoid rate limits
                 await new Promise(resolve => setTimeout(resolve, 100));
               }
-
-
-              // const batchResponse = await fetch(
-              //   `https://www.googleapis.com/calendar/v3/calendars/${calendarID}/events`,
-              //   {
-              //     method: "POST",
-              //     headers: {
-              //       Authorization: `Bearer ${access_token}`,
-              //       "Content-Type": "application/json",
-              //     },
-              //     body: JSON.stringify({
-              //       events: formattedEvents
-              //     }),
-              //   }
-              // );
-              
-              // const batchResult = await batchResponse.json();
-
-              // console.log("batch result: ", batchResult);
-
-              // if(!batchResponse.ok) {
-              //   console.error("Batch insert error:", batchResult.error);
-              //   throw new Error("Failed to batch insert events");
-              // }
-
-              //console.log(formattedEvents)
-            
-
-           
-
-              
-
-
             
         }
 
@@ -194,10 +152,6 @@ app.post('/api/export', async (req, res) => {
 const upload = multer({ storage: multer.memoryStorage() });
 
 app.post("/api/upload", upload.single("file"), async (req, res) => {
-  console.log("fields:", req.body); // any extra form fields
-  console.log("file info:", req.file); // metadata
-  console.log("buffer length:", req.file?.buffer.length); // raw file data
-
 
   try{
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
@@ -240,12 +194,10 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
         "- If a recurring pattern exists (e.g., “weekly reading due every Monday”), expand the instances only if the document provides concrete date mapping for the term; otherwise, include one representative item with a note.";
               
     const uploaded = await openai.files.create({
-        // Convert Buffer to a File the SDK accepts
         file: await toFile(req.file.buffer, req.file.originalname, { type: req.file.mimetype }),
-        purpose: "assistants" // generic file purpose accepted by Responses API
+        purpose: "assistants" 
     });
 
-    // Use the Responses API correctly
     const response = await openai.responses.create({
         model: "gpt-4o-mini",
         instructions: systemPrompt,
@@ -261,11 +213,9 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 
     });
 
-    //console.log("response: ", response);
-    // Extract the response content
-    const content = response.output_text; // Adjusted to access the 'text' property instead of 'content'
+
+    const content = response.output_text; 
     
-    // Try to parse the JSON response
     let eventData;
     if (content) {
         try {
@@ -278,9 +228,6 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
         return res.status(500).json({ error: "Unexpected response format" });
     }
 
-    //console.log("Extracted Event Data:", eventData);
-
-    // Clean up the uploaded file
     await openai.files.delete(uploaded.id);
     
     res.status(201).json({events: eventData});
