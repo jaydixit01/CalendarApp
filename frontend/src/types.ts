@@ -6,6 +6,7 @@ export type ParsedEvent = {
   startTime?: string; 
   endTime?: string; 
   timezone?: string; 
+  location?: string;
   description?: string;
 };
 
