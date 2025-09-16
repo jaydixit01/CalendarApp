@@ -51,7 +51,15 @@ app.post('/api/export', async (req, res) => {
               }
             );
             console.log("Token response status:", response.status);
-            const {access_token} = await response.json();
+            const tokenJson = await response.json();
+
+            
+            if (!response.ok) {
+              console.error("Token error payload:", tokenJson);
+              throw new Error(tokenJson.error || "token_exchange_failed");
+            }
+
+            const { access_token } = tokenJson;
 
             if(!access_token) throw new Error("Failed to get access token");
 
