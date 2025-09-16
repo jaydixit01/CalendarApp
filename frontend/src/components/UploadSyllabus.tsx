@@ -17,7 +17,7 @@ export default function UploadSyllabus() {
       const form = new FormData();
       form.append("file", file);
       form.append("timezone", tz);
-      const res = await fetch("http://localhost:5001/api/upload", {
+      const res = await fetch("/api/upload", {
         method: "POST",
         body: form,
       });
