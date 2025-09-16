@@ -50,6 +50,7 @@ app.post('/api/export', async (req, res) => {
                 }),
               }
             );
+            console.log("Token response status:", response.status);
             const {access_token} = await response.json();
 
             if(!access_token) throw new Error("Failed to get access token");
