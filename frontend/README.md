@@ -1,69 +1,41 @@
-# React + TypeScript + Vite
+Law Bandit Internship Application Project
+This is a project for the Law Bandit Software Engineering Internship. The application seamlessly parses a class syllabus and turns it into actionable tasks, increasing productivity. Additionally, it features a Google Calendar integration via OAuth2. 
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Set Up Instructions:
 
-Currently, two official plugins are available:
+Prerequisites
+	•	Node.js (v18 or newer recommended)
+	•	npm or another package manager (pnpm, yarn)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Clone the Repo
+git clone <your-repo-url>
+cd <your-project-folder>
 
-## Expanding the ESLint configuration
+Install Dependencies
+npm install
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Run Server
+npm run dev
+Application will be available at: http://localhost:5173
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Explanation of Approach:
+	1.	Document Parsing
+	    - A syllabus can be uploaded.
+	    - The file is parsed, and assignment, reading, and exam dates are extracted into structured event data.
+      - The extracted tasks are available to be viewed in month view and also in a list view. 
+	2.	Temporary Storage
+	    - Uploaded files are not permanently saved.
+	    - Once parsing is complete, the original document is discarded, ensuring privacy.
+	3.	Calendar Export
+	    - Users can export parsed tasks to their Google Calendar using the Google OAuth2 process.
+	    - No sensitive account information or calendar details are stored in the application.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Key Features & Other Important Points
+	1.	Upload any syllabus to automatically generate calendar events.
+	2.	Uploaded documents are only used for parsing and discarded immediately afterward.
+	3.	Click “Export to Google” to temporarily connect your Google Account.
+	4.	During export, Google will display a message that the app is unverified — click Continue to proceed.
+	5.	After OAuth2 authentication, events are exported directly to your Google Calendar.
+	6.	No Google Account credentials or calendar details are stored by this application.
