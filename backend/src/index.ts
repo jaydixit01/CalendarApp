@@ -246,4 +246,8 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 //     //console.log("server is up and running on port 5001")
 // })
 
+app.get("/", (_req, res) => {
+  res.send("Backend is running");
+});
+
 export default app;
