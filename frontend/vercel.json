@@ -1,0 +1,5 @@
+{
+    "rewrites": [
+      { "source": "/api/(.*)", "destination": "https://calendar-hms8161g1-jayddixit1-4840s-projects.vercel.app/api/$1" }
+    ]
+  }
