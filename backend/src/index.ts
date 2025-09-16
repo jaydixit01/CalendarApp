@@ -114,6 +114,7 @@ app.post('/api/export', async (req, res) => {
                 let successCount = 0;
                 const results = [];
 
+                //add each event to the user's google calendar using the api
                 const response = await fetch(
                   `https://www.googleapis.com/calendar/v3/calendars/${calendarID}/events`,
                   {
@@ -157,6 +158,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
     const guessedTZ = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York";
 
+    //define prompts for gpt giving instructions on how to parse the syllabus
     const systemPrompt =
         "You are an extraction engine that converts university course syllabi into STRICT JSON.\n\n" +
         "Follow these rules:\n" +
@@ -216,6 +218,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 
     const content = response.output_text; 
     
+    //parse the response content to a json object
     let eventData;
     if (content) {
         try {
@@ -228,6 +231,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
         return res.status(500).json({ error: "Unexpected response format" });
     }
 
+    //delete the uploaded file
     await openai.files.delete(uploaded.id);
     
     res.status(201).json({events: eventData});
@@ -239,5 +243,5 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 });
 
 app.listen(5001, () => {
-    console.log("server is up and running on port 5001")
+    //console.log("server is up and running on port 5001")
 })

@@ -36,6 +36,7 @@ export default function AppShell() {
     if(!gisReady) return;
     setIsExporting(true);
     
+    //set up the google oauth2 client
     try{
       const codeClient = google.accounts.oauth2.initCodeClient({
         client_id: clientID,
