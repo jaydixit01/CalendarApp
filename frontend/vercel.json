@@ -1,5 +1,5 @@
 {
     "rewrites": [
-      { "source": "/api/(.*)", "destination": "https://calendar-app-hykn.vercel.app//api/$1" }
+      { "source": "/api/(.*)", "destination": "https://calendar-app-nine-mu.vercel.app/api/$1" }
     ]
   }
