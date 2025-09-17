@@ -27,12 +27,28 @@ export default function AppShell() {
   const scopes = import.meta.env.VITE_GOOGLE_SCOPES
 
   React.useEffect(() => {
-    if (typeof window !== "undefined" && window.google?.accounts?.oauth2) {
-      setGisReady(true);
-    }
+    //function that checks if the google identity service is ready
+    const checkGoogleReady = () => {
+      if (typeof window !== "undefined" && window.google?.accounts?.oauth2) {
+        setGisReady(true);
+      }
+    };
+
+    checkGoogleReady();
+
+    const interval = setInterval(checkGoogleReady, 1000);
+    
+    const timeout = setTimeout(() => {
+      clearInterval(interval);
+    }, 10000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
   }, []);
 
-  async function handleGoogleImport() {
+  async function handleGoogleExport() {
     if(!gisReady) return;
     setIsExporting(true);
     
@@ -111,7 +127,7 @@ export default function AppShell() {
           <Button
             className="rounded-lg bg-black px-3 py-2 text-sm text-white shadow-sm"
             disabled={eventsCount === 0 || !gisReady || isExporting}
-            onClick={handleGoogleImport}
+            onClick={handleGoogleExport}
           >
             {isExporting ? "Exporting..." : "Export to Google"}
           </Button>
